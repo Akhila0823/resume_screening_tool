@@ -1,7 +1,8 @@
 import streamlit as st
+import pandas as pd
 from utils import extract_text, extract_keywords, calculate_match_score
 
-# ✅ Set page configuration (must be first)
+# ✅ Page config
 st.set_page_config(page_title="Resume Screening Tool", page_icon="📄", layout="wide")
 
 # --- Sidebar ---
@@ -14,10 +15,9 @@ uploaded_files = st.sidebar.file_uploader(
     accept_multiple_files=True,
 )
 
-# --- Main Title ---
+# --- Title ---
 st.title("📄 AI Resume Screening Tool")
 
-# --- Check if inputs exist ---
 if job_description and uploaded_files:
     with st.spinner("Analyzing resumes..."):
         job_keywords = extract_keywords(job_description)
@@ -37,21 +37,41 @@ if job_description and uploaded_files:
             except Exception as e:
                 st.error(f"Error processing {resume.name}: {e}")
 
-    # --- Display Results ---
     if matched:
-        # 🔽 Sort by match score descending
         matched = sorted(matched, key=lambda x: x["score"], reverse=True)
 
         st.markdown("## 📊 Results (Sorted by Match Score):")
-        for res in matched:
+        for index, res in enumerate(matched):
             st.markdown(f"### 🧾 {res['filename']}")
             st.markdown(
                 f"<h2 style='color:#4CAF50; font-size: 36px;'>Match Score: {res['score']:.2f}%</h2>",
                 unsafe_allow_html=True,
             )
             st.progress(res['score'] / 100)
-            st.write(f"**Matched Keywords ({len(res['keywords'])}):** {', '.join(res['keywords'])}")
+
+            # 👇 Show matched keywords on button click
+            if st.button(f"🔍 View Matched Keywords for {res['filename']}", key=f"btn_{index}"):
+                st.info(f"**Matched Keywords ({len(res['keywords'])}):** {', '.join(res['keywords'])}")
+
             st.markdown("---")
+
+        # 📥 CSV Download
+        df = pd.DataFrame([
+            {
+                "Filename": res["filename"],
+                "Match Score (%)": round(res["score"], 2),
+                "Matched Keywords": ", ".join(res["keywords"])
+            }
+            for res in matched
+        ])
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download Results as CSV",
+            data=csv,
+            file_name="match_results.csv",
+            mime="text/csv",
+        )
+
     else:
         st.warning("No valid resumes processed.")
 else:

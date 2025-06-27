@@ -1,15 +1,14 @@
 import docx
 import PyPDF2
 import spacy
-import io
-import os
+import streamlit as st
 
-# ✅ Automatically load or download SpaCy model
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    os.system("python -m spacy download en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+# ✅ Load SpaCy model with caching (avoids reloading every time)
+@st.cache_resource
+def load_spacy_model():
+    return spacy.load("en_core_web_sm")
+
+nlp = load_spacy_model()
 
 # ✅ Extract text from uploaded resume
 def extract_text(file):
@@ -21,7 +20,7 @@ def extract_text(file):
     elif ext.endswith(".txt"):
         return extract_text_from_txt(file)
     else:
-        return ""
+        return "Unsupported file format."
 
 # ✅ PDF extraction
 def extract_text_from_pdf(file):

@@ -1,56 +1,46 @@
 import docx
 import PyPDF2
 import spacy
-import streamlit as st
+import io
 
-@st.cache_resource
-def load_spacy_model():
-    return spacy.load("en_core_web_sm")
+# Load NLP model
+nlp = spacy.load("en_core_web_sm")
 
-nlp = load_spacy_model()
+def extract_text_from_pdf(pdf_file):
+    reader = PyPDF2.PdfReader(pdf_file)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() or ""
+    return text
+
+def extract_text_from_docx(docx_file):
+    doc = docx.Document(docx_file)
+    return "\n".join([para.text for para in doc.paragraphs])
 
 def extract_text(file):
-    ext = file.name.lower()
-    if ext.endswith(".pdf"):
+    if file.name.endswith(".pdf"):
         return extract_text_from_pdf(file)
-    elif ext.endswith(".docx"):
+    elif file.name.endswith(".docx"):
         return extract_text_from_docx(file)
-    elif ext.endswith(".txt"):
-        return extract_text_from_txt(file)
+    elif file.name.endswith(".txt"):
+        return io.StringIO(file.read().decode("utf-8")).read()
     else:
-        return "Unsupported file format."
-
-def extract_text_from_pdf(file):
-    try:
-        reader = PyPDF2.PdfReader(file)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() or ""
-        return text
-    except Exception as e:
-        return f"Error reading PDF: {e}"
-
-def extract_text_from_docx(file):
-    try:
-        doc = docx.Document(file)
-        return "\n".join([para.text for para in doc.paragraphs])
-    except Exception as e:
-        return f"Error reading DOCX: {e}"
-
-def extract_text_from_txt(file):
-    try:
-        return file.read().decode("utf-8", errors="ignore")
-    except Exception as e:
-        return f"Error reading TXT: {e}"
+        return ""
 
 def extract_keywords(text):
     doc = nlp(text.lower())
-    keywords = [token.lemma_ for token in doc if token.is_alpha and not token.is_stop]
-    return list(set(keywords))
+    return [
+        token.text
+        for token in doc
+        if token.is_alpha and not token.is_stop and len(token.text) > 2
+    ]
 
-def calculate_match_score(resume_text, job_keywords):
-    resume_doc = nlp(resume_text.lower())
-    resume_words = set(token.lemma_ for token in resume_doc if token.is_alpha and not token.is_stop)
-    matched_keywords = resume_words.intersection(set(job_keywords))
-    score = round((len(matched_keywords) / len(job_keywords)) * 100, 2) if job_keywords else 0
-    return score, list(matched_keywords)
+def calculate_match_score(job_keywords, resume_keywords):
+    # Ensure input is a list of words (already extracted via extract_keywords)
+    job_keywords = set(job_keywords)
+    resume_keywords = set(resume_keywords)
+
+    matched_keywords = list(job_keywords.intersection(resume_keywords))
+    match_score = (len(matched_keywords) / len(job_keywords)) * 100 if job_keywords else 0
+
+    return match_score, matched_keywords

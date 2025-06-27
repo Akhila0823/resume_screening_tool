@@ -3,14 +3,12 @@ import PyPDF2
 import spacy
 import streamlit as st
 
-# ✅ Load SpaCy model with caching (avoids reloading every time)
 @st.cache_resource
 def load_spacy_model():
     return spacy.load("en_core_web_sm")
 
 nlp = load_spacy_model()
 
-# ✅ Extract text from uploaded resume
 def extract_text(file):
     ext = file.name.lower()
     if ext.endswith(".pdf"):
@@ -22,7 +20,6 @@ def extract_text(file):
     else:
         return "Unsupported file format."
 
-# ✅ PDF extraction
 def extract_text_from_pdf(file):
     try:
         reader = PyPDF2.PdfReader(file)
@@ -33,7 +30,6 @@ def extract_text_from_pdf(file):
     except Exception as e:
         return f"Error reading PDF: {e}"
 
-# ✅ DOCX extraction
 def extract_text_from_docx(file):
     try:
         doc = docx.Document(file)
@@ -41,20 +37,17 @@ def extract_text_from_docx(file):
     except Exception as e:
         return f"Error reading DOCX: {e}"
 
-# ✅ TXT extraction
 def extract_text_from_txt(file):
     try:
         return file.read().decode("utf-8", errors="ignore")
     except Exception as e:
         return f"Error reading TXT: {e}"
 
-# ✅ Extract keywords from job description
 def extract_keywords(text):
     doc = nlp(text.lower())
     keywords = [token.lemma_ for token in doc if token.is_alpha and not token.is_stop]
     return list(set(keywords))
 
-# ✅ Compare resume with keywords and calculate match %
 def calculate_match_score(resume_text, job_keywords):
     resume_doc = nlp(resume_text.lower())
     resume_words = set(token.lemma_ for token in resume_doc if token.is_alpha and not token.is_stop)

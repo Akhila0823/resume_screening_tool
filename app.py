@@ -1,14 +1,18 @@
 import streamlit as st
 from utils import extract_text, extract_keywords, calculate_match_score
 
-# ✅ Must be at the very top before any other Streamlit commands
+# ✅ Set page configuration (must be first)
 st.set_page_config(page_title="Resume Screening Tool", page_icon="📄", layout="wide")
 
 # --- Sidebar ---
 st.sidebar.title("🔧 Input")
 job_description = st.sidebar.text_area("Paste Job Description Here", height=300)
 
-uploaded_files = st.sidebar.file_uploader("📤 Upload Resumes (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"], accept_multiple_files=True)
+uploaded_files = st.sidebar.file_uploader(
+    "📤 Upload Resumes (PDF, DOCX, TXT)",
+    type=["pdf", "docx", "txt"],
+    accept_multiple_files=True,
+)
 
 # --- Main Title ---
 st.title("📄 AI Resume Screening Tool")
@@ -17,8 +21,8 @@ st.title("📄 AI Resume Screening Tool")
 if job_description and uploaded_files:
     with st.spinner("Analyzing resumes..."):
         job_keywords = extract_keywords(job_description)
-
         matched = []
+
         for resume in uploaded_files:
             try:
                 text = extract_text(resume)
@@ -35,11 +39,17 @@ if job_description and uploaded_files:
 
     # --- Display Results ---
     if matched:
-        st.markdown("## 📊 Results:")
+        # 🔽 Sort by match score descending
+        matched = sorted(matched, key=lambda x: x["score"], reverse=True)
+
+        st.markdown("## 📊 Results (Sorted by Match Score):")
         for res in matched:
             st.markdown(f"### 🧾 {res['filename']}")
+            st.markdown(
+                f"<h2 style='color:#4CAF50; font-size: 36px;'>Match Score: {res['score']:.2f}%</h2>",
+                unsafe_allow_html=True,
+            )
             st.progress(res['score'] / 100)
-            st.write(f"**Match Score:** `{res['score']:.2f}%`")
             st.write(f"**Matched Keywords ({len(res['keywords'])}):** {', '.join(res['keywords'])}")
             st.markdown("---")
     else:
